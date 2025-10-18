@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title id="siteTitle">Tournament App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <style>
+        :root { --primary: #7c3aed; --secondary: #db2777; --bg: #111827; --card-bg: #1f2937; --text: #f9fafb; --text-muted: #9ca3af; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding-top: 60px; padding-bottom: 70px; }
+        .page { display: none; padding: 15px; animation: fadeIn 0.5s; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        header { position: fixed; top: 0; width: 100%; background: var(--card-bg); z-index: 100; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        header h1 { font-size: 24px; text-align: center; color: var(--text); margin: 0; padding: 15px; }
+        nav { position: fixed; bottom: 0; width: 100%; background: var(--card-bg); display: flex; box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.1); }
+        nav button { flex: 1; background: none; border: none; color: var(--text-muted); padding: 12px 0; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: color 0.2s; }
+        nav button.active { color: var(--primary); }
+        nav button i { font-size: 20px; }
+        .tournament-card { background: var(--card-bg); border-radius: 16px; margin-bottom: 20px; overflow: hidden; }
+        .tournament-card img { width: 100%; height: 160px; object-fit: cover; }
+        .card-content { padding: 20px; }
+        .card-content h3 { margin: 0 0 10px 0; color: #fff; }
+        .card-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 1em; color: var(--text-muted); }
+        .card-details span { display: flex; align-items: center; gap: 8px; }
+        .status { font-weight: bold; padding: 5px 12px; border-radius: 20px; color: #fff; text-align: center; }
+        .status-live { background: #ef4444; } .status-upcoming { background: #f59e0b; color: #000; } .status-completed { background: #22c55e; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .btn-primary { background-image: linear-gradient(to right, var(--primary), var(--secondary)); color: white; }
+        .btn:disabled { background-image: none; background-color: #4b5563; cursor: not-allowed; opacity: 0.7; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); backdrop-filter: blur(5px); justify-content: center; align-items: center; }
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 16px; text-align: center; width: 90%; max-width: 400px; }
+        .modal-content h2 { margin-top: 0; } .modal-content p { color: #f59e0b; }
+        .modal input { width: 100%; padding: 14px; background: #374151; border: 1px solid #4b5563; color: var(--text); border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
+        .modal .btn-group { display: flex; gap: 10px; }
+        #chat-window { height: calc(100vh - 220px); overflow-y: auto; padding-bottom: 10px; }
+        #chat-input { position: fixed; bottom: 70px; left: 0; width: 100%; display: flex; padding: 10px; background: var(--card-bg); box-sizing: border-box; gap: 10px; }
+        #chat-input input { flex: 1; padding: 12px; background: #374151; border: 1px solid #4b5563; color: var(--text); border-radius: 20px; }
+        .msg { padding: 10px 15px; border-radius: 18px; margin-bottom: 8px; max-width: 70%; word-wrap: break-word; line-height: 1.4; }
+        .msg-user { background: var(--primary); color: white; margin-left: auto; }
+        .msg-admin { background: #374151; color: var(--text); margin-right: auto; }
+        #profile-page .info-box { background: var(--card-bg); padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
+        #profile-page .info-box p { margin: 5px 0; color: var(--text-muted); } #profile-page .info-box strong { color: var(--text); }
+        #logoutBtn { background-image: linear-gradient(to right, #ef4444, #dc2626); }
+    </style>
+</head>
+<body>
+
+    <header><h1 id="header-title">Tournaments</h1></header>
+
+    <div id="tournaments-page" class="page active"><div id="tournaments-container"></div></div>
+    <div id="rules-page" class="page"><div id="rulesContent"></div></div>
+    <div id="chat-page" class="page"><div id="chat-window"></div><div id="chat-input"><input type="text" id="chatMessage" placeholder="Type a message..."><button id="sendMessageBtn" class="btn-primary" style="width:50px; border-radius: 50%;"><i class="fas fa-paper-plane"></i></button></div></div>
+    <div id="profile-page" class="page"><div class="info-box"><p>Logged in as:</p><strong id="profileName"></strong><p>UID:</p><strong id="profileUID"></strong></div><button id="logoutBtn" class="btn">Logout</button></div>
+
+    <nav>
+        <button id="nav-tournaments" class="active"><i class="fas fa-trophy"></i><span>Tournaments</span></button>
+        <button id="nav-rules"><i class="fas fa-scroll"></i><span>Rules</span></button>
+        <button id="nav-chat"><i class="fas fa-comments"></i><span>Chat</span></button>
+        <button id="nav-profile"><i class="fas fa-user"></i><span>Profile</span></button>
+    </nav>
+
+    <div id="loginModal" class="modal"><div class="modal-content"><h2>Login or Register</h2><p>Please use your correct in-game name & UID.</p><input type="text" id="userNameInput" placeholder="Game Name"><input type="password" id="passwordInput" placeholder="Password"><input type="number" id="uidInput" placeholder="Free Fire UID"><div class="btn-group"><button id="loginBtn" class="btn btn-secondary">Login</button><button id="registerBtn" class="btn btn-primary">Register</button></div></div></div>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyA9yxE49NeUZtki8JnzUozEzrcJCTgJbTg", authDomain: "esport-7a1eb.firebaseapp.com", databaseURL: "https://esport-7a1eb-default-rtdb.firebaseio.com", projectId: "esport-7a1eb", storageBucket: "esport-7a1eb.firebasestorage.app", messagingSenderId: "613393288254", appId: "1:613393288254:web:df603e4fcd81533b8f556f" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let currentUserName = localStorage.getItem('tournamentUserName');
+        let currentUserUID = localStorage.getItem('tournamentUserUID');
+
+        function showPage(pageId, title) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+            document.getElementById(`nav-${pageId.split('-')[0]}`).classList.add('active');
+            document.getElementById('header-title').innerText = title;
+        };
+        function registerUser() {
+            const name = document.getElementById('userNameInput').value.trim();
+            const pass = document.getElementById('passwordInput').value;
+            const uid = document.getElementById('uidInput').value.trim();
+            if (!name || !pass || !uid) return alert('All fields are required!');
+            db.ref('users/' + name).once('value', snapshot => {
+                if (snapshot.exists()) { alert('Username is already taken.'); } 
+                else { db.ref('users/' + name).set({ password: pass, uid: uid }); alert('Registration successful!'); loginSuccess(name, uid); }
+            });
+        }
+        function loginUser() {
+            const name = document.getElementById('userNameInput').value.trim();
+            const pass = document.getElementById('passwordInput').value;
+            if (!name || !pass) return alert('Name and password are required!');
+            db.ref('users/' + name).once('value', snapshot => {
+                if (snapshot.exists()) {
+                    const userData = snapshot.val();
+                    if (userData.password === pass) { loginSuccess(name, userData.uid); } else { alert('Incorrect password.'); }
+                } else { alert('User not found. Please register.'); }
+            });
+        }
+        function loginSuccess(name, uid) {
+            currentUserName = name; currentUserUID = uid;
+            localStorage.setItem('tournamentUserName', name);
+            localStorage.setItem('tournamentUserUID', uid);
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('profileName').innerText = name;
+            document.getElementById('profileUID').innerText = uid;
+            loadChat();
+        }
+        function logoutUser() { if (confirm('Are you sure?')) { localStorage.clear(); location.reload(); }}
+        function joinTournament(id) { db.ref(`tournaments/${id}/players/${currentUserName}`).set(currentUserUID).then(() => alert('Successfully joined!')); }
+        function sendMessage() {
+            const text = document.getElementById('chatMessage').value;
+            if (text && currentUserName) {
+                db.ref(`chats/${currentUserName}`).push().set({ from: 'user', text: text, timestamp: Date.now() });
+                document.getElementById('chatMessage').value = '';
+            }
+        };
+        function loadChat() {
+            if(!currentUserName) return;
+            const chatWindow = document.getElementById('chat-window');
+            db.ref(`chats/${currentUserName}`).on('value', snapshot => {
+                chatWindow.innerHTML = '';
+                if(snapshot.exists()) {
+                    snapshot.forEach(child => {
+                        const msg = child.val();
+                        chatWindow.innerHTML += `<div class="msg ${msg.from === 'admin' ? 'msg-admin' : 'msg-user'}">${msg.text}</div>`;
+                    });
+                    chatWindow.scrollTop = chatWindow.scrollHeight;
+                }
+            });
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('registerBtn').addEventListener('click', registerUser);
+        document.getElementById('loginBtn').addEventListener('click', loginUser);
+        document.getElementById('logoutBtn').addEventListener('click', logoutUser);
+        document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
+        document.getElementById('nav-tournaments').addEventListener('click', () => showPage('tournaments-page', 'Tournaments'));
+        document.getElementById('nav-rules').addEventListener('click', () => showPage('rules-page', 'Rules'));
+        document.getElementById('nav-chat').addEventListener('click', () => showPage('chat-page', 'Chat with Admin'));
+        document.getElementById('nav-profile').addEventListener('click', () => showPage('profile-page', 'My Profile'));
+
+        // --- Data Loading ---
+        db.ref('meta').on('value', snap => {
+            if(snap.exists()) {
+                document.getElementById('siteTitle').innerText = snap.val().siteName;
+                if(document.querySelector('#nav-tournaments.active')) { document.getElementById('header-title').innerText = snap.val().siteName; }
+                document.getElementById('rulesContent').innerHTML = snap.val().rules.replace(/\n/g, '<br>');
+            }
+        });
+        db.ref('tournaments').on('value', snapshot => {
+            const container = document.getElementById('tournaments-container');
+            container.innerHTML = '';
+            snapshot.forEach(child => {
+                const id = child.key; const t = child.val();
+                let statusText = 'Upcoming', statusClass = 'status-upcoming', detailsHTML = '';
+                const hasJoined = t.players && t.players[currentUserName];
+                if (t.winner) { statusText = 'Completed'; statusClass = 'status-completed'; detailsHTML = `<p><strong>Winner: ${t.winner}</strong></p>`; } 
+                else if (t.live) { statusText = 'Live'; statusClass = 'status-live'; detailsHTML = `<p><strong>Room ID:</strong> ${t.room_id || 'TBA'}<br><strong>Password:</strong> ${t.room_pass || 'TBA'}</p>`; }
+                container.innerHTML += `<div class="tournament-card">
+                    <img src="${t.image_url}" alt="${t.name}">
+                    <div class="card-content">
+                        <h3>${t.name} <span class="status ${statusClass}">${statusText}</span></h3>
+                        <div class="card-details">
+                            <span><i class="fas fa-users"></i> ${t.mode}</span>
+                            <span><i class="fas fa-trophy"></i> ${t.prize}</span>
+                            <span><i class="fas fa-calendar"></i> ${new Date(t.date_time).toLocaleDateString()}</span>
+                            <span><i class="fas fa-clock"></i> ${new Date(t.date_time).toLocaleTimeString()}</span>
+                        </div>
+                        ${detailsHTML}
+                        <br>
+                        <button class="btn btn-primary" onclick="joinTournament('${id}')" ${hasJoined || t.live || t.winner ? 'disabled' : ''}>${hasJoined ? 'Joined' : 'Join Now'}</button>
+                    </div></div>`;
+            });
+        });
+
+        // --- Initial Load ---
+        if (!currentUserName) {
+            document.getElementById('loginModal').style.display = 'flex';
+        } else {
+            document.getElementById('profileName').innerText = currentUserName;
+            document.getElementById('profileUID').innerText = currentUserUID;
+            loadChat();
+        }
+    </script>
+</body>
+</html>
